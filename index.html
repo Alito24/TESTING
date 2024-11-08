@@ -48,6 +48,24 @@
             }
         }
 
+        function shakeWindow() {
+            const shakeTime = 100; // Shake duration in milliseconds
+            const shakeInterval = 10; // Time between shakes in milliseconds
+            const shakeIntensity = 10; // Shake intensity in pixels
+
+            let shakeTimeElapsed = 0;
+            const shake = setInterval(() => {
+                if (shakeTimeElapsed < shakeTime) {
+                    const xOffset = Math.random() * shakeIntensity - shakeIntensity / 2;
+                    const yOffset = Math.random() * shakeIntensity - shakeIntensity / 2;
+                    window.moveBy(xOffset, yOffset);
+                    shakeTimeElapsed += shakeInterval;
+                } else {
+                    clearInterval(shake);
+                }
+            }, shakeInterval);
+        }
+
         function draw() {
             ctx.fillStyle = "black";
             ctx.fillRect(0, 0, 400, 400);
@@ -72,6 +90,7 @@
 
             if (snakeX === food.x && snakeY === food.y) {
                 score++;
+                shakeWindow();
                 food = {
                     x: Math.floor(Math.random() * 19 + 1) * box,
                     y: Math.floor(Math.random() * 19 + 3) * box,
