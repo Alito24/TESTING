@@ -2,135 +2,85 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Snake Game</title>
-    <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #000;
-        }
-        canvas {
-            border: 1px solid #fff;
-        }
-    </style>
+    <title>Card Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+    <div class="container mx-auto text-center">
+        <button id="generateCard" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mb-4">
+            Generate Card
+        </button>
+        <div id="messageContainer" class="mb-4 text-red-500"></div>
+        <div id="cardContainer" class="flex justify-center"></div>
+    </div>
+
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
+        const API_KEY = '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';
+        const ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
-        const box = 20;
-        let snake = [];
-        snake[0] = { x: 9 * box, y: 10 * box };
-        let food = {
-            x: Math.floor(Math.random() * 19 + 1) * box,
-            y: Math.floor(Math.random() * 19 + 3) * box,
-        };
-        let score = 0;
-        let d;
+        document.getElementById('generateCard').addEventListener('click', async () => {
+            const cardContainer = document.getElementById('cardContainer');
+            const messageContainer = document.getElementById('messageContainer');
+            cardContainer.innerHTML = '';
+            messageContainer.innerHTML = '';
 
-        document.addEventListener("keydown", direction);
+            const rarity = Math.floor(Math.random() * 100) + 1;
 
-        function direction(event) {
-            if (event.keyCode === 37 && d !== "RIGHT") {
-                d = "LEFT";
-            } else if (event.keyCode === 38 && d !== "DOWN") {
-                d = "UP";
-            } else if (event.keyCode === 39 && d !== "LEFT") {
-                d = "RIGHT";
-            } else if (event.keyCode === 40 && d !== "UP") {
-                d = "DOWN";
-            }
-        }
+            try {
+                const response = await fetch(ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: "mixtral-8x7b-32768",
+                        messages: [
+                            {
+                                role: "user",
+                                content: "Generate a name for a card in a TCG Game. It could be any theme. Answer with the name only"
+                            }
+                        ]
+                    })
+                });
 
-        function shakeWindow() {
-            const shakeTime = 100; // Shake duration in milliseconds
-            const shakeInterval = 10; // Time between shakes in milliseconds
-            const shakeIntensity = 10; // Shake intensity in pixels
+                // Log full response for debugging
+                console.log('Response status:', response.status);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
-            let shakeTimeElapsed = 0;
-            const shake = setInterval(() => {
-                if (shakeTimeElapsed < shakeTime) {
-                    const xOffset = Math.random() * shakeIntensity - shakeIntensity / 2;
-                    const yOffset = Math.random() * shakeIntensity - shakeIntensity / 2;
-                    window.moveBy(xOffset, yOffset);
-                    shakeTimeElapsed += shakeInterval;
-                } else {
-                    clearInterval(shake);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
                 }
-            }, shakeInterval);
-        }
 
-        function draw() {
-            ctx.fillStyle = "black";
-            ctx.fillRect(0, 0, 400, 400);
+                const data = await response.json();
+                console.log('Full API response:', data);
 
-            for (let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = i === 0 ? "green" : "white";
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
-                ctx.strokeStyle = "red";
-                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+                const cardName = data.choices[0].message.content.trim();
+
+                // Create card element
+                const cardElement = document.createElement('div');
+                cardElement.className = 'w-64 h-96 bg-white rounded-xl shadow-lg p-4 flex flex-col relative';
+
+                // Rarity element
+                const rarityElement = document.createElement('div');
+                rarityElement.className = 'absolute bottom-4 right-4 text-gray-600 font-bold';
+                rarityElement.textContent = `Rarity: ${rarity}`;
+
+                // Title element
+                const titleElement = document.createElement('div');
+                titleElement.className = 'text-2xl font-bold text-center mt-4';
+                titleElement.textContent = cardName;
+
+                cardElement.appendChild(rarityElement);
+                cardElement.appendChild(titleElement);
+                cardContainer.appendChild(cardElement);
+
+            } catch (error) {
+                console.error('Full error:', error);
+                messageContainer.textContent = `Error: ${error.message}`;
             }
-
-            ctx.fillStyle = "red";
-            ctx.fillRect(food.x, food.y, box, box);
-
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
-
-            if (d === "LEFT") snakeX -= box;
-            if (d === "UP") snakeY -= box;
-            if (d === "RIGHT") snakeX += box;
-            if (d === "DOWN") snakeY += box;
-
-            if (snakeX === food.x && snakeY === food.y) {
-                score++;
-                shakeWindow();
-                food = {
-                    x: Math.floor(Math.random() * 19 + 1) * box,
-                    y: Math.floor(Math.random() * 19 + 3) * box,
-                };
-            } else {
-                snake.pop();
-            }
-
-            let newHead = {
-                x: snakeX,
-                y: snakeY,
-            };
-
-            if (
-                snakeX < 0 ||
-                snakeX >= 400 ||
-                snakeY < 0 ||
-                snakeY >= 400 ||
-                collision(newHead, snake)
-            ) {
-                clearInterval(game);
-            }
-
-            snake.unshift(newHead);
-
-            ctx.fillStyle = "white";
-            ctx.font = "20px Arial";
-            ctx.fillText("Score: " + score, 5, 390);
-        }
-
-        function collision(head, array) {
-            for (let i = 0; i < array.length; i++) {
-                if (head.x === array[i].x && head.y === array[i].y) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        let game = setInterval(draw, 100);
+        });
     </script>
 </body>
 </html>
